@@ -45,7 +45,6 @@
 
 - If you see "Error: cannot find module", run `npm install` again
 - If the website doesn't load, make sure you typed the address correctly
-- If you see JotForm API errors, the API key might be expired
 
 ## 💻 How to Use the Website
 
