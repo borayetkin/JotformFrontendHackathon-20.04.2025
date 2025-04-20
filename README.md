@@ -64,25 +64,27 @@ A simple online shopping website that gets products from JotForm and lets you ad
 
 ```
 JotformFrontendHackathon-20.04.2025/
-├── public/                # Static files
-│   └── index.html         # Main HTML page
-├── src/                   # Source code
-│   ├── components/        # Website parts
-│   │   ├── Cart.js        # Shopping cart
-│   │   ├── Footer.js      # Page footer
-│   │   ├── Header.js      # Page header with navigation
+├── public/              # Static files
+│   └── index.html       # Main HTML page
+├── src/                 # Source code
+│   ├── components/      # Website parts
+│   │   ├── Cart.js      # Shopping cart
+│   │   ├── Footer.js    # Page footer
+│   │   ├── Header.js    # Navigation
 │   │   ├── ProductCard.js # Single product display
 │   │   ├── ProductDetail.js # Product details page
 │   │   └── ProductList.js # Grid of all products
-│   ├── data/              # Local data
-│   │   └── products.js    # Backup product information
-│   ├── services/          # External connections
-│   │   └── api.js         # JotForm API connection
-│   ├── App.js             # Main application
-│   ├── index.js           # Entry point
-│   └── index.css          # Main styles
-├── package.json           # Project settings
-└── README.md              # This file
+│   ├── data/            # Local data
+│   │   └── products.js  # Backup product data
+│   ├── services/        # External connections
+│   │   └── api.js       # JotForm API integration
+│   ├── App.js           # Main application
+│   ├── index.js         # Entry point
+│   └── index.css        # Styles with Tailwind
+├── package.json         # Dependencies and scripts
+├── postcss.config.js    # PostCSS configuration
+├── tailwind.config.js   # Tailwind CSS settings
+└── README.md            # This documentation
 ```
 
 ## 🔄 How JotForm Integration Works
