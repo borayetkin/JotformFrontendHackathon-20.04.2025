@@ -1,9 +1,5 @@
 # JotForm E-commerce Shop
 
-A simple online shopping website that gets products from JotForm and lets you add them to your cart and submit orders.
-
-![JotForm E-commerce Shop](https://placehold.co/600x400?text=JotForm+E-commerce+Shop)
-
 ## 📱 What This Website Does
 
 - **Show Products**: See all products with pictures and prices
