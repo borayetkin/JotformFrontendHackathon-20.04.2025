@@ -131,7 +131,6 @@ The checkout process is in `src/components/Cart.js`. This file handles:
 - Showing cart items
 - Collecting customer information
 - Processing payment selection
-- Submitting orders to JotForm
 
 ## 🤝 Getting Help
 
