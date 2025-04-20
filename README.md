@@ -95,24 +95,7 @@ All JotForm communication happens in the `src/services/api.js` file using the fo
 - **API Key**: c85edb6e95352b280c4f0edb1ddf9e61
 - **Base URL**: https://api.jotform.com
 
-## 📝 How to Change Things
 
-### Adding New Products
-
-Edit the `getDummyProducts` function in `src/services/api.js`:
-
-```javascript
-const products = [
-  {
-    name: "New Product Name",
-    description: "Product description",
-    price: 25.0,
-    category: "Category",
-    maxQuantity: 10,
-  },
-  // Add more products here
-];
-```
 
 ### Changing Colors and Design
 
