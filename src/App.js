@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import Header from "./components/Header";
 import ProductList from "./components/ProductList";
 import ProductCard from "./components/ProductCard";
@@ -12,8 +12,27 @@ import {
   fetchProducts,
   FORM_IDS,
 } from "./services/api";
+import ProductDetail from "./components/ProductDetail";
 
-// Create Favorites component
+/**
+ * Main E-commerce Application
+ *
+ * This is the primary application component that:
+ * - Fetches products from JotForm API with fallback to local data
+ * - Manages the shopping cart state (add, remove, update items)
+ * - Handles user favorites with localStorage persistence
+ * - Manages order submission to JotForm
+ * - Coordinates routing between product list and favorites pages
+ *
+ * The app uses React Router for navigation and maintains UI state
+ * across both product browsing and checkout process.
+ */
+
+/**
+ * Favorites component - displays user's favorited products
+ * This is defined within App.js to keep related state management together
+ * Allows users to view, filter, and manage their saved favorite products
+ */
 const Favorites = ({
   products,
   favorites,
@@ -328,6 +347,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [productList, setProductList] = useState([]);
+  const [viewedProducts, setViewedProducts] = useState([]);
 
   // Reference to the ProductList component to access its methods
   const productListRef = useRef();
@@ -379,9 +399,27 @@ function App() {
       }
     };
 
-    // Immediately load cart and favorites
+    // Load recently viewed products from localStorage
+    const loadViewedProducts = () => {
+      try {
+        const savedViewedProducts = localStorage.getItem("viewedProducts");
+        if (savedViewedProducts) {
+          const parsedViewedProducts = JSON.parse(savedViewedProducts);
+          setViewedProducts(parsedViewedProducts);
+        }
+      } catch (error) {
+        console.error(
+          "Error loading viewed products from localStorage:",
+          error
+        );
+        setViewedProducts([]);
+      }
+    };
+
+    // Immediately load cart, favorites, and viewed products
     loadCartFromStorage();
     loadFavoritesFromStorage();
+    loadViewedProducts();
 
     // Add event listener to handle storage events (for cross-tab synchronization)
     const handleStorageChange = (event) => {
@@ -389,6 +427,8 @@ function App() {
         loadCartFromStorage();
       } else if (event.key === "favorites") {
         loadFavoritesFromStorage();
+      } else if (event.key === "viewedProducts") {
+        loadViewedProducts();
       }
     };
 
@@ -402,31 +442,36 @@ function App() {
 
   // Save cart items to localStorage whenever they change
   useEffect(() => {
-    if (cartItems.length > 0 || localStorage.getItem("cartItems")) {
-      try {
-        localStorage.setItem("cartItems", JSON.stringify(cartItems));
-        console.log("Cart saved to localStorage:", cartItems.length, "items");
-      } catch (error) {
-        console.error("Error saving cart to localStorage:", error);
-      }
+    try {
+      localStorage.setItem("cartItems", JSON.stringify(cartItems));
+      console.log("Cart saved to localStorage:", cartItems.length, "items");
+    } catch (error) {
+      console.error("Error saving cart to localStorage:", error);
     }
   }, [cartItems]);
 
   // Save favorites to localStorage whenever they change
   useEffect(() => {
-    if (favorites.length > 0 || localStorage.getItem("favorites")) {
-      try {
-        localStorage.setItem("favorites", JSON.stringify(favorites));
-        console.log(
-          "Favorites saved to localStorage:",
-          favorites.length,
-          "items"
-        );
-      } catch (error) {
-        console.error("Error saving favorites to localStorage:", error);
-      }
+    try {
+      localStorage.setItem("favorites", JSON.stringify(favorites));
+      console.log(
+        "Favorites saved to localStorage:",
+        favorites.length,
+        "items"
+      );
+    } catch (error) {
+      console.error("Error saving favorites to localStorage:", error);
     }
   }, [favorites]);
+
+  // Save viewed products to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem("viewedProducts", JSON.stringify(viewedProducts));
+    } catch (error) {
+      console.error("Error saving viewed products to localStorage:", error);
+    }
+  }, [viewedProducts]);
 
   // Toggle product in favorites
   const toggleFavorite = (productId) => {
@@ -444,6 +489,31 @@ function App() {
   // Check if a product is in favorites
   const isFavorite = (productId) => {
     return favorites.includes(productId);
+  };
+
+  // Track product view for history and recommendations
+  const trackProductView = (productId) => {
+    setViewedProducts((prev) => {
+      // Remove the product if it's already in the list to avoid duplicates
+      const filtered = prev.filter((id) => id !== productId);
+      // Add the product to the beginning of the array (most recent)
+      return [productId, ...filtered].slice(0, 10); // Keep only the 10 most recent
+    });
+  };
+
+  // Get product by ID
+  const getProductById = (productId) => {
+    return productList.find((product) => product.id === productId);
+  };
+
+  // Get similar products by category
+  const getSimilarProducts = (productId, limit = 4) => {
+    const product = getProductById(productId);
+    if (!product) return [];
+
+    return productList
+      .filter((p) => p.id !== productId && p.category === product.category)
+      .slice(0, limit);
   };
 
   // Fetch products from JotForm API using our improved fetcher
@@ -535,23 +605,72 @@ function App() {
   // Handle order submission
   const handleOrderSubmit = async (customerData) => {
     try {
+      console.log("Preparing to submit order to JotForm...");
+
+      // Create combined order data to send to JotForm
       const orderData = {
-        customer: customerData,
-        items: cartItems,
+        customer: {
+          name: customerData.name,
+          address: customerData.address,
+          email: customerData.email || "",
+          phone: customerData.phone || "",
+        },
+        items: cartItems.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          description: item.description || item.name,
+          image: item.image,
+          images: item.images || (item.image ? [item.image] : []),
+        })),
         totalAmount: cartTotal,
+        paymentMethod: customerData.paymentMethod || "card",
+        orderDate: customerData.orderDate || new Date().toISOString(),
       };
 
+      // Log the items being sent to JotForm
+      console.log(
+        `Submitting ${cartItems.length} items to JotForm:`,
+        cartItems
+          .map((item) => `${item.name} (${item.quantity} x $${item.price})`)
+          .join(", ")
+      );
+
+      // Submit order data to JotForm via our API service
       const response = await submitOrder(orderData);
+      console.log("Raw JotForm response:", response);
 
       if (response.success) {
+        console.log("Order successfully submitted to JotForm:", response);
+        const submissionId = response.submissionId || `ORDER-${Date.now()}`;
+
+        console.log(`Confirmed submission ID: ${submissionId}`);
+
+        // Clear cart only on successful submission
         clearCart();
-        return { success: true, message: response.message };
+
+        // Return success with any additional data from the API
+        return {
+          success: true,
+          message: response.message || "Order submitted successfully",
+          submissionId: submissionId,
+        };
       }
 
-      return { success: false, message: "Order submission failed" };
+      // If there was an error in the submission
+      console.error("Failed to submit order to JotForm:", response);
+      return {
+        success: false,
+        message:
+          response.message || "Order submission failed. Please try again.",
+      };
     } catch (error) {
-      console.error("Error submitting order:", error);
-      return { success: false, message: "An error occurred during submission" };
+      console.error("Error in order submission process:", error);
+      return {
+        success: false,
+        message: "An error occurred during submission. Please try again later.",
+      };
     }
   };
 
@@ -561,8 +680,23 @@ function App() {
     0
   );
 
+  // Add a nice background color to the entire app
+  useEffect(() => {
+    // Set background color when component mounts with smooth transition
+    document.body.style.backgroundColor = "#f0f4f8";
+    // Use a subtle gradient background that transitions smoothly
+    document.body.style.background =
+      "linear-gradient(145deg, #f0f4f8 0%, #e6eef9 100%)";
+
+    // Clean up function to reset background color when component unmounts
+    return () => {
+      document.body.style.backgroundColor = "";
+      document.body.style.background = "";
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-purple-50 to-gray-100">
       <Header
         cartItemsCount={cartItems.reduce(
           (total, item) => total + item.quantity,
@@ -632,6 +766,22 @@ function App() {
                   addToCart={addToCart}
                   cartItems={cartItems}
                   updateCartQuantity={updateQuantity}
+                />
+              }
+            />
+            <Route
+              path="/product/:productId"
+              element={
+                <ProductDetail
+                  products={productList}
+                  cartItems={cartItems}
+                  addToCart={addToCart}
+                  updateCartQuantity={updateQuantity}
+                  toggleFavorite={toggleFavorite}
+                  isFavorite={isFavorite}
+                  trackProductView={trackProductView}
+                  getSimilarProducts={getSimilarProducts}
+                  viewedProducts={viewedProducts}
                 />
               }
             />

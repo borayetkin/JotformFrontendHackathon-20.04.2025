@@ -1,5 +1,22 @@
 import axios from "axios";
 
+/**
+ * JotForm API Integration Service
+ *
+ * This service handles all interactions with the JotForm API:
+ * - Fetching product data from JotForm forms
+ * - Submitting orders to JotForm
+ * - Error handling and fallback behavior
+ *
+ * The service tries multiple endpoints to retrieve product data:
+ * 1. First attempts the payment-info endpoint
+ * 2. Falls back to form questions if payment info fails
+ * 3. Falls back to form submissions if questions fail
+ * 4. Uses dummy/fallback data if all API attempts fail
+ *
+ * It also handles order submission in the proper format required by JotForm's API.
+ */
+
 const API_KEY = "c85edb6e95352b280c4f0edb1ddf9e61";
 const BASE_URL = "https://api.jotform.com";
 
@@ -7,6 +24,18 @@ export const FORM_IDS = {
   form1: "251074098711961",
   form2: "251074116166956",
   form3: "251073669442965",
+};
+
+// Field mappings for our forms - maps our data to JotForm field IDs
+const FIELD_MAPPINGS = {
+  [FORM_IDS.form1]: {
+    fullName: "1", // Full Name field
+    address: "2", // Address field
+    productDetails: "5", // Product details field
+    orderSummary: "3", // Order summary text field
+    totalAmount: "4", // Total amount field
+  },
+  // Add mappings for other forms as needed
 };
 
 /**
@@ -482,23 +511,240 @@ const getDummyProducts = (formId) => {
 
 export const submitOrder = async (orderData) => {
   try {
-    // This is a mock submission since the payment-info endpoint is not available
-    // In a real implementation, you would use a working JotForm API endpoint
     console.log("Order data to be submitted:", orderData);
 
-    // Simulate API delay
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message: "Order submitted successfully",
-        });
-      }, 1500);
+    // Validate required data
+    if (!orderData.customer || !orderData.customer.name) {
+      throw new Error("Customer name is required");
+    }
+
+    if (!orderData.customer.address) {
+      throw new Error("Customer address is required");
+    }
+
+    if (
+      !orderData.items ||
+      !Array.isArray(orderData.items) ||
+      orderData.items.length === 0
+    ) {
+      throw new Error("Order must contain at least one item");
+    }
+
+    // Prepare the submission data for JotForm
+    const formId = FORM_IDS.form1;
+    const fieldMapping = FIELD_MAPPINGS[formId];
+
+    console.log(`Creating submission for form ID: ${formId}`);
+
+    // Format data according to the JotForm API requirements
+    const formData = new URLSearchParams();
+
+    // Add API key directly to form data
+    formData.append("apiKey", API_KEY);
+
+    // Add customer info
+    formData.append(
+      `submission[${fieldMapping.fullName}]`,
+      orderData.customer.name
+    );
+    formData.append(
+      `submission[${fieldMapping.address}]`,
+      orderData.customer.address
+    );
+
+    // Calculate totals
+    const subtotal = orderData.items.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0
+    );
+    const shipping = 4.99; // Fixed shipping cost
+    const total = subtotal + shipping;
+
+    // Create a readable order summary (will be shown in JotForm dashboard)
+    const orderSummary = orderData.items
+      .map(
+        (item) =>
+          `${item.name} x ${item.quantity} = $${(
+            item.price * item.quantity
+          ).toFixed(2)}`
+      )
+      .join("\n");
+
+    // Add summary and totals to form data
+    formData.append(`submission[${fieldMapping.orderSummary}]`, orderSummary);
+    formData.append(
+      `submission[${fieldMapping.totalAmount}]`,
+      `$${total.toFixed(2)}`
+    );
+
+    // Add each product as a separate field in a way JotForm expects
+    orderData.items.forEach((item, index) => {
+      const fieldId =
+        getProductFieldId(item.name) ||
+        `${Number(fieldMapping.productDetails) + index}`;
+
+      // Add product name and quantity directly as form fields
+      formData.append(`submission[${fieldId}_name]`, item.name);
+      formData.append(
+        `submission[${fieldId}_quantity]`,
+        item.quantity.toString()
+      );
+      formData.append(`submission[${fieldId}_price]`, item.price.toString());
+
+      // Also add in standard format for JotForm product fields
+      formData.append(
+        `submission[${fieldId}]`,
+        JSON.stringify({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          total: (item.price * item.quantity).toFixed(2),
+        })
+      );
     });
+
+    // Include additional metadata JotForm expects
+    formData.append("submission[new]", "1");
+    formData.append("submission[flag]", "0");
+
+    // Also send the raw product array as JSON in a special field
+    formData.append(`submission[products]`, JSON.stringify(orderData.items));
+
+    // Log the data being sent for debugging
+    console.log("Form data being sent:", Object.fromEntries(formData));
+
+    // Submit the form to JotForm
+    const response = await axios.post(
+      `${BASE_URL}/form/${formId}/submissions`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    console.log("JotForm submission response:", response.data);
+
+    // Extract the submission ID from the response
+    if (
+      response.data &&
+      response.data.responseCode === 200 &&
+      response.data.content
+    ) {
+      const submissionId = response.data.content.submissionID;
+      console.log(`Created submission with ID: ${submissionId}`);
+
+      // Fetch submission details after a short delay to ensure processing
+      try {
+        console.log("Waiting for submission to be processed...");
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const detailsResponse = await axios.get(
+          `${BASE_URL}/submission/${submissionId}`,
+          {
+            params: {
+              apiKey: API_KEY,
+            },
+          }
+        );
+
+        console.log(
+          "Submission details:",
+          JSON.stringify(detailsResponse.data, null, 2)
+        );
+      } catch (detailsError) {
+        console.error("Error fetching submission details:", detailsError);
+        // We can still continue even if details fetch fails
+      }
+
+      return {
+        success: true,
+        message: "Order submitted successfully to JotForm",
+        submissionId: submissionId,
+      };
+    }
+
+    // In case of any issue with the API response
+    return {
+      success: false,
+      message:
+        response.data?.message || "Order submission failed. Please try again.",
+    };
   } catch (error) {
-    console.error("Error submitting order:", error);
-    throw error;
+    console.error("Error submitting order to JotForm:", error);
+
+    // Different error handling based on error type
+    let errorMessage =
+      "An error occurred during submission. Please try again later.";
+
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error("JotForm API error response:", error.response.data);
+      errorMessage = `Server error: ${error.response.status}. ${
+        error.response.data?.message || "Please try again."
+      }`;
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error("No response received from JotForm API");
+      errorMessage = "No response from server. Check your internet connection.";
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error("Error setting up request:", error.message);
+      errorMessage = error.message || "Error preparing submission.";
+    }
+
+    // For development/testing - provide a fallback response
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        "Using fallback successful response in development environment"
+      );
+      return {
+        success: true,
+        message: "Order submitted successfully (development fallback)",
+        submissionId: `DEV-${Date.now()}`,
+      };
+    }
+
+    return {
+      success: false,
+      message: errorMessage,
+    };
   }
+};
+
+/**
+ * Helper function to map product names to form field IDs
+ * This is a simplified version - in production, you would dynamically fetch these mappings
+ */
+const getProductFieldId = (productName) => {
+  // Map product names to their likely field IDs in the JotForm
+  const fieldMappings = {
+    // Based on the JotForm form structure - examples
+    "Apple, Red": "5",
+    Asparagus: "6",
+    "Avocado, Hass 60 ct #1": "7",
+    // Default handling for other products
+  };
+
+  // Try to find an exact match
+  if (fieldMappings[productName]) {
+    return fieldMappings[productName];
+  }
+
+  // If no exact match, try to find a partial match
+  const keyMatch = Object.keys(fieldMappings).find((key) =>
+    productName.toLowerCase().includes(key.toLowerCase())
+  );
+
+  if (keyMatch) {
+    return fieldMappings[keyMatch];
+  }
+
+  // If no mapping found, return a default value
+  console.warn(`No field mapping found for product: ${productName}`);
+  return null;
 };
 
 export default {

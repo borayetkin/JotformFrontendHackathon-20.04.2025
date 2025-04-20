@@ -1,4 +1,8 @@
-// Products data from JotForm
+/**
+ * Fallback products data used when JotForm API fails or returns empty results
+ * This provides a consistent product dataset for development and testing
+ * Each product includes standard fields like name, price, image, category, etc.
+ */
 export const products = [
   {
     id: 1,

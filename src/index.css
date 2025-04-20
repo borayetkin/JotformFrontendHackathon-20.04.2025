@@ -13,6 +13,7 @@ body {
   display: flex;
   flex-direction: column;
   background-color: #faf5ff;
+  transition: background-color 0.5s ease, background 0.5s ease;
 }
 
 #root {

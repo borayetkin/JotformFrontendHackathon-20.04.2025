@@ -99,14 +99,32 @@ const Cart = ({
     setOrderProcessing(true);
 
     try {
+      // Log helpful debug information before submission
+      console.log(`Submitting order with ${cartItems.length} items to JotForm`);
+      console.log(`Customer name: ${name}, address: ${address}`);
+      console.log("Cart items:", cartItems);
+
+      // Create a customer object with the complete address information
+      const customerInfo = {
+        name,
+        address: `${address}${formData.city ? ", " + formData.city : ""}${
+          formData.postalCode ? ", " + formData.postalCode : ""
+        }${formData.country ? ", " + formData.country : ""}`,
+        email,
+        phone,
+      };
+
+      // Submit the order with complete customer info
       const result = await onSubmitOrder({
         name,
-        address,
+        address: customerInfo.address,
         email,
         phone,
         paymentMethod,
         orderDate: new Date().toISOString(),
       });
+
+      console.log("Order submission result:", result);
 
       if (result.success) {
         // Save order to localStorage for history/tracking
@@ -115,9 +133,9 @@ const Cart = ({
             localStorage.getItem("orderHistory") || "[]"
           );
           const newOrder = {
-            id: `ORDER-${Date.now()}`,
+            id: result.submissionId || `ORDER-${Date.now()}`,
             date: new Date().toISOString(),
-            customer: { name, address, email, phone },
+            customer: customerInfo,
             items: cartItems,
             paymentMethod,
             total: cartTotal,
@@ -125,15 +143,23 @@ const Cart = ({
           };
           orderHistory.push(newOrder);
           localStorage.setItem("orderHistory", JSON.stringify(orderHistory));
-          console.log("Order saved to localStorage history");
+          console.log("Order saved to localStorage history", newOrder);
         } catch (storageError) {
           console.error("Failed to save order to history:", storageError);
         }
 
+        // Create a detailed confirmation message with the submission ID
+        const submissionId =
+          result.submissionId ||
+          `ORDER-${Math.floor(Math.random() * 10000000)}`;
+
+        // Update the message with the JotForm submission ID
+        const confirmationMessage = `Order #${submissionId} submitted successfully to JotForm!`;
+
+        console.log(`Success message to display: ${confirmationMessage}`);
+
         setMessage({
-          text:
-            "Order submitted successfully! Confirmation #" +
-            Math.floor(Math.random() * 10000000),
+          text: confirmationMessage,
           isError: false,
         });
         setCheckoutStep(4); // Move to confirmation
@@ -145,10 +171,19 @@ const Cart = ({
           setEmail("");
           setPhone("");
           setMessage({ text: "", isError: false });
+          setFormData({
+            name: "",
+            email: "",
+            address: "",
+            city: "",
+            postalCode: "",
+            country: "",
+          });
           setCheckoutStep(1);
           closeCart();
-        }, 3000);
+        }, 5000); // Give more time to see the confirmation
       } else {
+        console.error("Order submission failed:", result);
         setMessage({
           text: result.message || "Order submission failed. Please try again.",
           isError: true,
@@ -209,7 +244,7 @@ const Cart = ({
 
         {/* Cart panel */}
         <div
-          className="relative inline-block bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all w-full max-w-lg h-[700px] flex flex-col"
+          className="relative inline-block bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all w-full max-w-lg h-[90vh] max-h-[800px] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Cart header */}
@@ -269,7 +304,7 @@ const Cart = ({
                       d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                     />
                   </svg>
-                  Payment Method
+                  Payment
                 </>
               )}
               {checkoutStep === 4 && (
@@ -412,7 +447,7 @@ const Cart = ({
           </div>
 
           {/* Cart content - fixed size with no scroll */}
-          <div className="bg-white px-6 py-4 flex-1 flex flex-col justify-center">
+          <div className="bg-white px-6 py-4 flex-1 flex flex-col justify-center overflow-y-auto custom-scrollbar">
             {/* Step 1: Cart Items */}
             {checkoutStep === 1 && (
               <>
@@ -448,8 +483,8 @@ const Cart = ({
                     </button>
                   </div>
                 ) : (
-                  <div>
-                    <ul className="divide-y divide-gray-100 max-h-72 overflow-y-auto pr-2 -mr-2 custom-scrollbar">
+                  <div className="flex flex-col min-h-[500px]">
+                    <ul className="divide-y divide-gray-100 max-h-72 overflow-y-auto pr-2 -mr-2 custom-scrollbar mb-4">
                       {cartItems.map((item) => (
                         <li
                           key={item.id}
@@ -564,7 +599,7 @@ const Cart = ({
                       ))}
                     </ul>
 
-                    <div className="border-t border-gray-200 mt-6 pt-4">
+                    <div className="border-t border-gray-200 mt-auto pt-4">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Subtotal</span>
                         <span className="font-medium">
@@ -612,8 +647,8 @@ const Cart = ({
 
             {/* Step 2: Delivery Details */}
             {checkoutStep === 2 && (
-              <div>
-                <div className="mb-6">
+              <div className="flex flex-col min-h-[500px]">
+                <div className="mb-6 flex-1">
                   <h4 className="text-base font-semibold text-gray-800 mb-4">
                     Delivery Information
                   </h4>
@@ -655,7 +690,7 @@ const Cart = ({
                   </div>
                 </div>
 
-                <div className="mt-6 py-4 border-t border-gray-100">
+                <div className="mt-auto py-4 border-t border-gray-100">
                   <div className="flex justify-between text-lg font-semibold">
                     <p className="text-gray-700">Order Total</p>
                     <p className="text-primary">${cartTotal.toFixed(2)}</p>
@@ -721,8 +756,8 @@ const Cart = ({
 
             {/* Step 3: Payment */}
             {checkoutStep === 3 && (
-              <div>
-                <div className="mb-4">
+              <div className="flex flex-col min-h-[500px]">
+                <div className="mb-4 flex-1">
                   <h3 className="text-base font-semibold mb-3">
                     Payment Method
                   </h3>
@@ -926,7 +961,7 @@ const Cart = ({
                   )}
                 </div>
 
-                <div className="bg-gray-100 p-3 rounded-lg mb-4">
+                <div className="bg-gray-100 p-3 rounded-lg mb-4 mt-auto">
                   <div className="flex justify-between mb-2">
                     <p className="text-sm text-gray-600">Subtotal</p>
                     <p className="text-sm font-medium">
@@ -1033,8 +1068,8 @@ const Cart = ({
 
             {/* Step 4: Confirmation */}
             {checkoutStep === 4 && (
-              <div className="text-center py-4 my-auto flex flex-col justify-center items-center">
-                <div className="mx-auto h-16 w-16 text-green-500 mb-4">
+              <div className="text-center py-4 my-auto flex flex-col justify-center items-center overflow-y-auto">
+                <div className="mx-auto h-16 w-16 text-green-500 mb-4 flex-shrink-0">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -1050,23 +1085,35 @@ const Cart = ({
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Thank You For Your Order!
+                  Order Successfully Submitted!
                 </h3>
                 {message.text && (
-                  <div className="bg-green-50 text-green-800 border border-green-200 rounded-lg p-2 mb-3 text-sm">
+                  <div className="bg-green-50 text-green-800 border border-green-200 rounded-lg p-3 mb-3 text-sm font-medium">
                     {message.text}
                   </div>
                 )}
                 <p className="text-sm text-gray-600 mb-4">
-                  Your order has been placed successfully. You will receive a
-                  confirmation email shortly.
+                  Your order has been submitted to JotForm and will be processed
+                  shortly.
                 </p>
 
-                <div className="w-full bg-gray-50 p-3 rounded-lg mb-4 text-sm">
+                <div className="w-full bg-gray-50 p-4 rounded-lg mb-4 text-sm shadow-sm">
+                  <div className="flex justify-between mb-2 pb-2 border-b border-gray-100">
+                    <span className="text-gray-700 font-medium">
+                      JotForm Submission:
+                    </span>
+                    <span className="font-bold text-green-600">
+                      {message.text
+                        ? message.text.match(/Order #([A-Za-z0-9-]+)/)?.[1] ||
+                          "Successful"
+                        : "Successful"}
+                    </span>
+                  </div>
                   <div className="flex justify-between mb-1">
                     <span className="text-gray-500">Order Date:</span>
                     <span className="font-medium">
-                      {new Date().toLocaleDateString()}
+                      {new Date().toLocaleDateString()}{" "}
+                      {new Date().toLocaleTimeString()}
                     </span>
                   </div>
                   <div className="flex justify-between mb-1">
@@ -1075,13 +1122,52 @@ const Cart = ({
                       {paymentMethod}
                     </span>
                   </div>
-                  <div className="flex justify-between border-t border-gray-100 pt-1 mt-1">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-500">Customer:</span>
+                    <span className="font-medium">{name}</span>
+                  </div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-500">Delivery Address:</span>
+                    <span className="font-medium text-right max-w-[200px] truncate">
+                      {address}
+                    </span>
+                  </div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-500">Items:</span>
+                    <span className="font-medium">
+                      {cartItems.reduce(
+                        (total, item) => total + item.quantity,
+                        0
+                      )}{" "}
+                      item(s)
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-gray-100 pt-2 mt-1">
                     <span className="text-gray-700 font-medium">
                       Total Amount:
                     </span>
                     <span className="text-gray-900 font-bold">
                       ${cartTotal.toFixed(2)}
                     </span>
+                  </div>
+                </div>
+
+                <div className="mb-4 w-full">
+                  <div className="border border-blue-100 bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
+                    <div className="flex items-center mb-1">
+                      <svg
+                        className="w-5 h-5 mr-2"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M19.376 12.416L8.777 19.482A.5.5 0 0 1 8 19.066V4.934a.5.5 0 0 1 .777-.416l10.599 7.066a.5.5 0 0 1 0 .832z" />
+                      </svg>
+                      <span className="font-medium">Next Steps</span>
+                    </div>
+                    <p>
+                      Your order has been submitted to JotForm. You'll receive a
+                      confirmation email from JotForm with your order details.
+                    </p>
                   </div>
                 </div>
 

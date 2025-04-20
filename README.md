@@ -1,125 +1,150 @@
-# JotForm E-commerce Frontend
+# JotForm E-commerce Shop
 
-A React-based e-commerce frontend for Del Mono Fresh, fetching product data from JotForm and providing shopping cart functionality.
+A simple online shopping website that gets products from JotForm and lets you add them to your cart and submit orders.
 
-## Features
+![JotForm E-commerce Shop](https://placehold.co/600x400?text=JotForm+E-commerce+Shop)
 
-- Modern, responsive UI using Tailwind CSS
-- Product listing with images and details
-- Shopping cart functionality
-- Quantity selector for products
-- Order form with customer details
-- Simulated checkout process
+## 📱 What This Website Does
 
-## Project Structure
+- **Show Products**: See all products with pictures and prices
+- **Shopping Cart**: Add items to your cart and change quantities
+- **Save Favorites**: Click the heart icon to save products you like
+- **Easy Checkout**: Enter shipping info and choose payment method
+- **Submit Orders**: Orders are sent to JotForm automatically
+
+## 🚀 How to Start the Project
+
+### What You Need
+
+- [Node.js](https://nodejs.org/) (version 14 or newer)
+- npm (comes with Node.js)
+- A web browser (Chrome, Firefox, Safari, etc.)
+
+### Step-by-Step Setup
+
+1. **Get the code**
+
+   ```bash
+   git clone https://github.com/borayetkin/JotformFrontendHackathon-20.04.2025.git
+   cd JotformFrontendHackathon-20.04.2025
+   ```
+
+2. **Install everything needed**
+
+   ```bash
+   npm install
+   ```
+
+3. **Start the website**
+
+   ```bash
+   npm start
+   ```
+
+4. **Use the website**
+
+   Open your browser and go to: http://localhost:3000
+
+### Solving Common Problems
+
+- If you see "Error: cannot find module", run `npm install` again
+- If the website doesn't load, make sure you typed the address correctly
+- If you see JotForm API errors, the API key might be expired
+
+## 💻 How to Use the Website
+
+1. Browse products on the home page
+2. Click "Add to Cart" on products you want to buy
+3. Click the cart icon in the top-right corner to see your cart
+4. Fill in your name and address
+5. Choose a payment method (credit card or PayPal)
+6. Click "Complete Order" to submit your order to JotForm
+
+## 🔧 Project Files and Structure
 
 ```
-jotform-ecommerce/
-├── node_modules/        # Dependencies (generated after npm install)
-├── public/              # Static assets
-│   └── index.html       # Main HTML file
-├── src/                 # Source code
-│   ├── components/      # React components
-│   │   ├── Header.js    # Navigation and branding
-│   │   ├── ProductList.js  # List of all products
-│   │   ├── ProductCard.js  # Individual product display
-│   │   ├── Cart.js      # Shopping cart functionality
-│   │   └── Footer.js    # Site footer with JotForm links
-│   ├── services/        # API and service functions
-│   │   └── api.js       # JotForm API integration
-│   ├── data/            # Data files
-│   │   └── products.js  # Product information
-│   ├── App.js           # Main application component
-│   ├── index.js         # Entry point
-│   └── index.css        # Global styles with Tailwind
-├── package.json         # Project dependencies and scripts
-├── tailwind.config.js   # Tailwind CSS configuration
-└── README.md            # Project documentation
+JotformFrontendHackathon-20.04.2025/
+├── public/                # Static files
+│   └── index.html         # Main HTML page
+├── src/                   # Source code
+│   ├── components/        # Website parts
+│   │   ├── Cart.js        # Shopping cart
+│   │   ├── Footer.js      # Page footer
+│   │   ├── Header.js      # Page header with navigation
+│   │   ├── ProductCard.js # Single product display
+│   │   ├── ProductDetail.js # Product details page
+│   │   └── ProductList.js # Grid of all products
+│   ├── data/              # Local data
+│   │   └── products.js    # Backup product information
+│   ├── services/          # External connections
+│   │   └── api.js         # JotForm API connection
+│   ├── App.js             # Main application
+│   ├── index.js           # Entry point
+│   └── index.css          # Main styles
+├── package.json           # Project settings
+└── README.md              # This file
 ```
 
-## Getting Started
+## 🔄 How JotForm Integration Works
 
-### Prerequisites
+This website connects with JotForm in two ways:
 
-- Node.js (v14 or later)
-- npm or yarn
+1. **Getting Products**: Products are loaded from JotForm forms through the API
+2. **Submitting Orders**: When you checkout, your order information is sent to JotForm
 
-### Installation
+All JotForm communication happens in the `src/services/api.js` file using the following:
 
-1. Clone the repository:
+- **Form IDs**: 251074098711961, 251074116166956, 251073669442965
+- **API Key**: c85edb6e95352b280c4f0edb1ddf9e61
+- **Base URL**: https://api.jotform.com
 
-```bash
-git clone https://github.com/your-username/jotform-ecommerce.git
-cd jotform-ecommerce
+## 📝 How to Change Things
+
+### Adding New Products
+
+Edit the `getDummyProducts` function in `src/services/api.js`:
+
+```javascript
+const products = [
+  {
+    name: "New Product Name",
+    description: "Product description",
+    price: 25.0,
+    category: "Category",
+    maxQuantity: 10,
+  },
+  // Add more products here
+];
 ```
 
-2. Install dependencies:
+### Changing Colors and Design
 
-```bash
-npm install
-# or
-yarn install
-```
+The website uses Tailwind CSS. To change colors:
 
-3. Start the development server:
+1. Edit classes in component files (like `bg-gray-700` to `bg-blue-700`)
+2. Or update the theme in `tailwind.config.js`
 
-```bash
-npm start
-# or
-yarn start
-```
+### Fixing Cart or Checkout Issues
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+The checkout process is in `src/components/Cart.js`. This file handles:
 
-## JotForm Integration
+- Showing cart items
+- Collecting customer information
+- Processing payment selection
+- Submitting orders to JotForm
 
-This project uses the JotForm API to fetch product data. The API details are:
+## 🤝 Getting Help
 
-- Form ID: 251074098711961
-- API Key: c85edb6e95352b280c4f0edb1ddf9e61
-- Endpoint: https://api.jotform.com/form/:formID/questions?apiKey={apiKey}
+If you need help:
 
-## Technologies Used
+1. Check the comments in the code
+2. Look at error messages in the browser console (Press F12)
+3. Read the JotForm API docs: https://api.jotform.com/docs/
 
-- React.js - Frontend framework
-- React Router - Navigation
-- Tailwind CSS - Styling
-- Axios - API requests
+## 📄 Repository
 
-## Future Improvements
+This project is available at: [https://github.com/borayetkin/JotformFrontendHackathon-20.04.2025](https://github.com/borayetkin/JotformFrontendHackathon-20.04.2025)
 
-- Add product search and filtering
-- Implement user authentication
-- Add payment processing integration
-- Implement product categories
-- Add product detail pages
-- Persist cart data in localStorage or a database
+---
 
-## License
-
-This project is licensed under the MIT License.
-
-# 🚀 Hackathon Duyurusu
-
-## 📅 Tarih ve Saat
-
-Pazar günü saat 11:00'da başlayacak.
-
-## 🎯 Hackathon Konsepti
-
-Bu hackathon'da, size özel hazırlanmış bir senaryo üzerine web uygulaması geliştirmeniz istenecektir. Hackathon başlangıcında senaryo detayları paylaşılacaktır.Katılımcılar, verilen GitHub reposunu fork ederek kendi geliştirme ortamlarını oluşturacaklardır.
-
-## 📦 GitHub Reposu
-
-Hackathon için kullanılacak repo: [JotformFrontendHackathon-20.04.2025](https://github.com/erayaydinJF/JotformFrontendHackathon-20.04.2025)
-
-## 🛠️ Hazırlık Süreci
-
-1. GitHub reposunu fork edin
-2. Tercih ettiğiniz framework ile geliştirme ortamınızı hazırlayın
-3. Hazırladığınız setup'ı fork ettiğiniz repoya gönderin
-
-## 💡 Önemli Notlar
-
-- Katılımcılar kendi tercih ettikleri framework'leri kullanabilirler
-- Geliştirme ortamınızı önceden hazırlayıp reponuza göndermeniz önerilir
+Project created for the JotForm Frontend Hackathon, 2025

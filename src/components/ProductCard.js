@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
+/**
+ * ProductCard component displays an individual product with image, details, and cart controls
+ * Handles adding products to cart and toggling favorites
+ */
 const ProductCard = ({
   product,
   addToCart,
@@ -8,13 +13,15 @@ const ProductCard = ({
   toggleFavorite,
   isFavorite,
 }) => {
+  // Local state for UI and interaction
   const [quantity, setQuantity] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
   const { id, name, description, price, image, images, maxQuantity } = product;
+  const navigate = useNavigate();
 
-  // Check if we have an array of images
+  // Get product images as an array
   const imageArray =
     images && Array.isArray(images) && images.length > 0
       ? images
@@ -22,7 +29,7 @@ const ProductCard = ({
       ? [image]
       : [];
 
-  // Check if image is a placeholder or actual product image
+  // Check if image is a placeholder
   const isPlaceholder = (imgUrl) => {
     return (
       imgUrl &&
@@ -32,7 +39,7 @@ const ProductCard = ({
     );
   };
 
-  // Check if all images are placeholders
+  // Skip rendering products with only placeholder images
   const allPlaceholders =
     imageArray.length > 0 && imageArray.every((img) => isPlaceholder(img));
 
@@ -43,12 +50,12 @@ const ProductCard = ({
     imageError
   );
 
-  // Sync component state with cart quantity
+  // Keep local quantity state in sync with cart
   useEffect(() => {
     setQuantity(currentQuantity);
   }, [currentQuantity]);
 
-  // Change image on hover if we have multiple images
+  // Cycle through product images on hover
   useEffect(() => {
     if (shouldRender && isHovered && imageArray.length > 1) {
       const interval = setInterval(() => {
@@ -61,48 +68,52 @@ const ProductCard = ({
     return () => {};
   }, [isHovered, imageArray.length, shouldRender]);
 
-  // Extract product display information
+  // Product display info
   const displayName = name;
-
-  // Always show description even if it's the same as the name
   const displayDescription = description || name;
-
-  // Extract category from product if available
   const category = product.category || "";
 
-  const handleAddToCart = () => {
+  // Cart interaction handlers
+  const handleAddToCart = (e) => {
+    e.stopPropagation(); // Prevent navigation when clicking add to cart
     if (quantity === 0) {
       // First time adding to cart, add 1
       addToCart(product, 1);
-      // No need to update local state, it will be updated via props
     } else {
-      // Already in cart, add the selected quantity
+      // Already in cart, add one more
       addToCart(product, 1);
     }
   };
 
-  const handleIncrement = () => {
+  const handleIncrement = (e) => {
+    e.stopPropagation(); // Prevent navigation when clicking buttons
     if (quantity < maxQuantity) {
       updateQuantity(quantity + 1);
     }
   };
 
-  const handleDecrement = () => {
+  const handleDecrement = (e) => {
+    e.stopPropagation(); // Prevent navigation when clicking buttons
     if (quantity > 0) {
       updateQuantity(quantity - 1);
     }
   };
 
-  // Return null if we shouldn't render this product
+  const navigateToProduct = () => {
+    navigate(`/product/${id}`);
+  };
+
+  // Skip rendering products without valid images
   if (!shouldRender) {
     return null;
   }
 
   return (
     <div
-      className="h-full flex flex-col bg-white rounded-md overflow-hidden shadow transition-all duration-300 hover:shadow-md border border-gray-200"
+      className="h-full flex flex-col bg-white rounded-md overflow-hidden shadow transition-all duration-300 hover:shadow-md border border-gray-200 cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={navigateToProduct}
     >
       {/* Favorite button */}
       <button
@@ -132,6 +143,7 @@ const ProductCard = ({
         </svg>
       </button>
 
+      {/* Product image with gallery indicators */}
       <div className="relative w-full pt-[100%] overflow-hidden">
         <img
           src={imageArray[currentImageIndex]}
@@ -143,7 +155,7 @@ const ProductCard = ({
           }}
         />
 
-        {/* Image indicators when we have multiple images */}
+        {/* Image indicators for multiple images */}
         {imageArray.length > 1 && (
           <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1">
             {imageArray.map((_, idx) => (
@@ -159,17 +171,19 @@ const ProductCard = ({
           </div>
         )}
 
+        {/* Hover overlay for view details */}
         <div
           className={`absolute inset-0 bg-gradient-to-t from-black/30 to-transparent transition-opacity duration-300 flex items-end justify-center pb-6 ${
             isHovered ? "opacity-100" : "opacity-0"
           }`}
         >
-          <span className="bg-white text-gray-700 px-4 py-1.5 rounded text-xs font-medium transition-all duration-300 cursor-pointer shadow-sm">
+          <span className="bg-white text-gray-700 px-4 py-1.5 rounded text-xs font-medium transition-all duration-300 shadow-sm">
             View Details
           </span>
         </div>
       </div>
 
+      {/* Product details and cart controls */}
       <div className="p-4 flex-grow flex flex-col justify-between gap-2">
         <div>
           <div className="flex flex-col gap-1">
@@ -188,12 +202,84 @@ const ProductCard = ({
               ${price.toFixed(2)}
             </p>
           </div>
-          <button
-            onClick={handleAddToCart}
-            className="px-3 py-1.5 bg-gray-600/90 text-white text-sm font-medium rounded shadow-sm hover:bg-gray-700 transition-all duration-200 transform hover:-translate-y-0.5"
-          >
-            Add to Cart
-          </button>
+
+          {/* Cart controls - quantity counter or add button */}
+          {quantity > 0 ? (
+            <div
+              className="flex items-center bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={handleDecrement}
+                className="px-2 py-1.5 text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none"
+                aria-label="Decrease quantity"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20 12H4"
+                  />
+                </svg>
+              </button>
+
+              <div className="w-8 text-center font-medium text-gray-800 py-1.5 bg-gray-50">
+                {quantity}
+              </div>
+
+              <button
+                onClick={handleIncrement}
+                className="px-2 py-1.5 text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none"
+                aria-label="Increase quantity"
+                disabled={quantity >= maxQuantity}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`h-4 w-4 ${
+                    quantity >= maxQuantity ? "text-gray-400" : ""
+                  }`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleAddToCart}
+              className="px-3 py-1.5 bg-gray-700 text-white text-sm font-medium rounded-md shadow-sm hover:bg-gray-600 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 flex items-center gap-1.5"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                />
+              </svg>
+              Add to Cart
+            </button>
+          )}
         </div>
       </div>
     </div>
